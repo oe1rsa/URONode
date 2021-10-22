@@ -1063,7 +1063,7 @@ int nuser_list(int argc, char **argv)
 	      u.call);
       break;
     default:
-      sprintf(buf, "\n?????? (%.9s %.18s)",
+      sprintf(buf, "\n????? (%.9s %.18s)",
 	      u.call, u.ul_name);
       break;
     }

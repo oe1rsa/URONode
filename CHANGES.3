@@ -484,6 +484,12 @@ their own kernel compiles, others are not however I seem to get the blame of
 faulty software when this is far from the truth. Until this bug is resolved
 and fixed, the project is on an indefinite pause.
 
+22/10/2021 2.15
+K3CHB found when running "make" that it was erroring on util.c due to dupe
+calls. Removing those calls fixes this bug and allows URONode to compile
+now without error on newer GCC systems. Older ones were a lot more tollerant
+to bugs like this.
+
 ----------- Note on SystemD --------
 In uronode.socket, you'll notice the line:
 ListenStream=0.0.0.0:3694
