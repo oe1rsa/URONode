@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <strings.h>
 
 #include <netax25/ax25.h>
 #include <netrose/rose.h>
@@ -33,6 +34,32 @@ char *safe_strncpy(char *dest, char *src, int n)
   return strncpy(dest, src, n);
 }
 
+/*
+ * Compare calls, treat absence of '-0' as if it were present.
+ */
+int equal_calls(char *call1, char* call2)
+{
+  char *cp1, *cp2;
+  char tmp[10];
+
+  cp1 = strchr(call1, '-');
+  cp2 = strchr(call2, '-');
+
+  if (cp2 == NULL && cp1 != NULL) {
+      safe_strncpy(tmp, call1, 9);
+      tmp[cp1-call1] = 0;
+      return !strcasecmp(tmp, call2);
+    }
+  else if (cp1 == NULL && cp2 != NULL) {
+      safe_strncpy(tmp, call2, 9);
+      tmp[cp2-call2] = 0;
+      return !strcasecmp(call1, tmp);
+    }
+  else {
+      return !strcasecmp(call1, call2);
+    }
+}
+
 struct proc_dev *read_proc_dev(void)
 {
   FILE *fp;
@@ -40,7 +67,7 @@ struct proc_dev *read_proc_dev(void)
   struct proc_dev *p;
   struct proc_dev *list = NULL;
   int i = 0;
-  
+
   errno = 0;
   if ((fp = fopen(PROC_DEV_FILE, "r")) == NULL) return NULL;
   while (fgets(buffer, 256, fp) != NULL) {
@@ -75,7 +102,7 @@ struct proc_dev *read_proc_dev(void)
 void free_proc_dev(struct proc_dev *ap)
 {
   struct proc_dev *p;
-  
+
   while (ap != NULL) {
     p = ap->next;
     free(ap);
@@ -89,7 +116,7 @@ struct flex_gt *read_flex_gt(void)
   char buffer[256], *cp;
   struct flex_gt *p=NULL, *list = NULL, *new_el;
   int i = 0, k;
-  
+
   errno = 0;
   if ((fp = fopen(FLEX_GT_FILE, "r")) == NULL) return NULL;
   while (fgets(buffer, 256, fp) != NULL) {
@@ -99,7 +126,7 @@ struct flex_gt *read_flex_gt(void)
     new_el->addr = safe_atoi(strtok(buffer, " \t\n\r"));
     safe_strncpy(new_el->call, strtok(NULL, " \t\n\r"), 9);
     safe_strncpy(new_el->dev, strtok(NULL, " \t\n\r"), 4);
-    
+
     k=0;
     while((cp=strtok(NULL, " \t\n\r"))!=NULL&&k<AX25_MAX_DIGIS) safe_strncpy(new_el->digis[k++],cp,9);
     while(k<AX25_MAX_DIGIS) strcpy(new_el->digis[k++],"\0");
@@ -119,7 +146,7 @@ struct flex_gt *read_flex_gt(void)
 void free_flex_gt(struct flex_gt *fp)
 {
   struct flex_gt *p;
-  
+
   while (fp != NULL) {
     p = fp->next;
     free(fp);
@@ -133,7 +160,7 @@ struct flex_dst *read_flex_dst(void)
   char buffer[256];
   struct flex_dst *p=NULL, *list = NULL, *new_el;
   int i = 0;
-  
+
   errno = 0;
   if ((fp = fopen(FLEX_DST_FILE, "r")) == NULL) return NULL;
   while (fgets(buffer, 256, fp) != NULL) {
@@ -161,7 +188,7 @@ struct flex_dst *read_flex_dst(void)
 void free_flex_dst(struct flex_dst *fp)
 {
   struct flex_dst *p;
-  
+
   while (fp != NULL) {
     p = fp->next;
     free(fp);
@@ -175,7 +202,7 @@ struct ax_routes *read_ax_routes(void)
   char buffer[256], *cp, *cmd;
   struct ax_routes *p=NULL, *list = NULL, *new_el;
   int i = 0, k;
-  
+
   errno = 0;
   if ((fp = fopen(AX_ROUTES_FILE, "r")) == NULL) return NULL;
   while (fgets(buffer, 256, fp) != NULL) {
@@ -196,40 +223,40 @@ struct ax_routes *read_ax_routes(void)
       safe_strncpy(new_el->conn_type, strupr(strtok(NULL, " \t\n\r")), 1);
       safe_strncpy(new_el->description, strtok(NULL, "'\t\n\r"), 50);
       if (new_el->description==NULL) strcpy(new_el->description," ");
-      
+
       switch(*new_el->conn_type) {
-      case CONN_TYPE_DIRECT: 
-	{ 
-	  break;
-	}
+      case CONN_TYPE_DIRECT:
+        {
+          break;
+        }
       case CONN_TYPE_NODE:
-	{
-	  safe_strncpy(new_el->digis[0], strupr(strtok(NULL, " \t\n\r")), 9);
-      
+        {
+          safe_strncpy(new_el->digis[0], strupr(strtok(NULL, " \t\n\r")), 9);
+
 	  break;
 	}
       case CONN_TYPE_DIGI:
-	{
-	  k=0;      
-	  while((cp=strtok(NULL, " \t\n\r"))!=NULL&&k<AX25_MAX_DIGIS) 
-	    safe_strncpy(new_el->digis[k++],strupr(cp),9);
-	  while(k<AX25_MAX_DIGIS) strcpy(new_el->digis[k++],"\0");
-	  break;
-	}
-      default: 
-	{
-	  return NULL;
-	  break;
-	}
+        {
+          k=0;
+          while((cp=strtok(NULL, " \t\n\r"))!=NULL&&k<AX25_MAX_DIGIS)
+            safe_strncpy(new_el->digis[k++],strupr(cp),9);
+          while(k<AX25_MAX_DIGIS) strcpy(new_el->digis[k++],"\0");
+          break;
+        }
+      default:
+        {
+          return NULL;
+          break;
+        }
       }
 
-      
+
       if(list==NULL) {
-	list=new_el;
-	p=list;
+        list=new_el;
+        p=list;
       } else {
-	p->next = new_el;
-	p=p->next;
+        p->next = new_el;
+        p=p->next;
       }
     }
   }
@@ -240,7 +267,7 @@ struct ax_routes *read_ax_routes(void)
 void free_ax_routes(struct ax_routes *ap)
 {
   struct ax_routes *p;
-  
+
   while (ap != NULL) {
     p = ap->next;
     free(ap);
@@ -259,7 +286,8 @@ struct ax_routes *find_route(char *dest_call, struct ax_routes *list)
   if ((cp = strchr(call, '-')) != NULL && *(cp + 1) == '0') *cp = 0;
   axrt=list?list:read_ax_routes();
   for (p=axrt;p!=NULL;p=p->next) {
-    if (!strcasecmp(call, p->dest_call)) {
+    if (equal_calls(call, p->dest_call)) {
+    /*if (!strcasecmp(call, p->dest_call)) {*/
       a = *p;
       a.next = NULL;
       p = &a;
@@ -271,7 +299,7 @@ struct ax_routes *find_route(char *dest_call, struct ax_routes *list)
       p = &a;
       break;
     }
- 
+
   }
   if (list==NULL) free_ax_routes(axrt);
   return p;
@@ -285,7 +313,7 @@ struct flex_dst *find_dest(char *dest_call, struct flex_dst *list)
   int ssid;
 
   safe_strncpy(call, dest_call, 9);
-  cp=strchr(call,'-'); 
+  cp=strchr(call,'-');
   if (cp==NULL) ssid=0;
   else {
     ssid=safe_atoi(cp+1);
@@ -335,7 +363,7 @@ struct ax_routes *find_mheard(char *dest_call)
   if ((fp = fopen(DATA_MHEARD_FILE, "r")) == NULL) {
     return NULL;
   }
-  
+
   safe_strncpy(call,dest_call,9);
   cp=strchr(call, '-');
   if (cp==NULL) strcat(call,"-0");
@@ -346,8 +374,8 @@ struct ax_routes *find_mheard(char *dest_call)
       safe_strncpy(a.dest_call, ax25_ntoa(&mh.from_call), 9);
       safe_strncpy(a.dev, mh.portname, 13);
       for(k=0;k<AX25_MAX_DIGIS;k++) {
-	if (k<=mh.ndigis) safe_strncpy(a.digis[k],ax25_ntoa(&mh.digis[k]),9);
-	else strcpy(a.digis[k],"\0");
+        if (k<=mh.ndigis) safe_strncpy(a.digis[k],ax25_ntoa(&mh.digis[k]),9);
+        else strcpy(a.digis[k],"\0");
       }
       return &a;
     }

@@ -13,7 +13,7 @@ COMMON_SRC =		user.c util.c
 NODE_SRC =		node.c cmdparse.c config.c command.c jheard.c axcalluser.c \
 			gateway.c extcmd.c procinfo.c router.c system.c sysinfo.c ipc.c
 NODEUSERS_SRC =		nodeusers.c
-FLEXD_SRC = 		flexd.c procinfo.c
+FLEXD_SRC = 		flexd.c procinfo.c 
 DIGI_SRC =		axdigi.c
 CALIBRATE_SRC =		calibrate.c
 
@@ -96,7 +96,7 @@ uronode: $(COMMON_OBJS) $(NODE_OBJS)
 nodeusers: $(COMMON_OBJS) $(NODEUSERS_OBJS)
 	$(LD) $(LDFLAGS) -o nodeusers $(COMMON_OBJS) $(NODEUSERS_OBJS) $(LIBS) $(ZLIB)
 
-flexd: $(FLEXD_OBJS)
+flexd:  $(FLEXD_OBJS)
 	$(LD) $(LDFLAGS) -o flexd $(FLEXD_OBJS) $(LIBS) $(ZLIB)
 
 calibrate: $(CALIBRATE_OBJS)

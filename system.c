@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,30 +75,17 @@ int cusgets(char *buf, int buflen, ax25io *iop)
 }
 
 /*---------------------------------------------------------------------------*/
-#define _XOPEN_SOURCE
 
-int find_pty(char *ptyname)
+int find_pty(char* ptyname, int len)
 {
-  char master[80];
-  int fd;
-  int num;
-  static int lastnum = -1;
-
-  for(num = lastnum + 1; ; num++) {
-    if (num >= NUMPTY) num = 0;
-//    sprintf(master, "/dev/ptmx%c%x", 'p' + (num >> 4), num & 0xf); 
-	sprintf(master, "/dev/ptmx", O_RDWR);
-/*      sprintf(master, "/dev/pts/%x", num & 0xf); */
-    if ((fd = open(master, O_RDWR | O_NONBLOCK, 0600)) >= 0) {
-      sprintf(ptyname, "/dev/ptmx", 'p' + (num >> 4), num & 0xf);
-/*     sprintf(ptyname, "/dev/pts/%x", num & 0xf); */
-      lastnum = num;
-      return fd;
-    }
-    if (num == lastnum) break;
+  int fd = -1;
+  if ((fd = open("/dev/ptmx", O_RDWR | O_NONBLOCK, 0600)) >= 0) {
+      if (ptsname_r(fd, ptyname, len)) {
+          close(fd);
+          return -1;
+        }
   }
-
-  return -1;
+  return fd;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -126,7 +115,7 @@ void login_close(void)
   ut->ut_type=DEAD_PROCESS;
   memset(ut->ut_host,0,UT_HOSTSIZE);
   memset(ut->ut_user,0,UT_NAMESIZE);
-  time((time_t *)&ut->ut_time); 
+  time((time_t *)&ut->ut_time);
 /*  ut->ut_xtime = (unsigned int)time(NULL); */
   pututline(ut);
   endutent();
@@ -146,7 +135,7 @@ void login_close(void)
 
 int login_open(struct passwd *pw, char *command)
 {
-  if ((ptyfd=find_pty(ptyname)) < 0) {
+  if ((ptyfd=find_pty(ptyname, 80)) < 0) {
     syslog(LOG_ERR, "Error opening pseudo terminal for %s", pw->pw_name);
     return -1;
   }
@@ -154,8 +143,8 @@ int login_open(struct passwd *pw, char *command)
   syslog(LOG_INFO, "Opened pseudo terminal (%s) for %s", ptyname, pw->pw_name);
 
   pid=fork();
-  
-  if (pid==-1) { 
+
+  if (pid==-1) {
     syslog(LOG_ERR, "Cannot fork for %s", pw->pw_name);
     return -1;
   }
@@ -172,7 +161,7 @@ int login_open(struct passwd *pw, char *command)
     dup(0);
     chmod(ptyname, 0622);
     ioctl(0, TIOCSCTTY, 0);
-    
+
     memset(&termios, 0 , sizeof(termios));
     termios.c_iflag = ICRNL | IXOFF;
     termios.c_oflag = OPOST | ONLCR | TAB3;
@@ -226,35 +215,35 @@ int login_open(struct passwd *pw, char *command)
       /* FD_SET(ptyfd, &fds_err); */
 
       if (User.ul_type==AF_INET) {
-	tv.tv_usec=25; 
-	tv.tv_sec=0;
+        tv.tv_usec=25;
+        tv.tv_sec=0;
       } else {
-	tv.tv_usec=750; 
-	tv.tv_sec=0;
+        tv.tv_usec=750;
+        tv.tv_sec=0;
       }
 
       if (in_queue>0) k=select(ptyfd+1, &fds_read, NULL, &fds_err, &tv);
       else k=select(ptyfd+1, &fds_read, NULL, &fds_err, NULL);
-					  
+
       if (k == -1) {
-	if (errno!=EINTR) {
-	  syslog(LOG_DEBUG,"I/O select");
-	  break;
-	}
+        if (errno!=EINTR) {
+          syslog(LOG_DEBUG,"I/O select");
+          break;
+        }
       }
 
       if (k == 0) {
-	if (in_queue>0) {
-	  axio_flush(NodeIo);
-	  in_queue=0;
-	}
+        if (in_queue>0) {
+          axio_flush(NodeIo);
+          in_queue=0;
+        }
       }
 
-      /*      if (FD_ISSET(User.fd, &fds_err)) {    
-	      syslog(LOG_DEBUG,"I/O end: error channel, user");
-	      break;
-	      }
-      
+      /*      if (FD_ISSET(User.fd, &fds_err)) {
+              syslog(LOG_DEBUG,"I/O end: error channel, user");
+              break;
+              }
+
 	      if (FD_ISSET(ptyfd, &fds_err)) {
 	      syslog(LOG_DEBUG,"I/O end: error channel, application");
 	      break;
@@ -262,28 +251,28 @@ int login_open(struct passwd *pw, char *command)
 
       if (FD_ISSET(STDIN_FILENO, &fds_read)) {
         alarm(SYSTEM_TIMEOUT);
-	cnt=cusgets(buf, sizeof(buf), NodeIo);
-	if (cnt < 0)
-	  {   
-	    syslog(LOG_DEBUG,"I/O end: stdio channel, user");
-	    break;
-	  } else {
-	  write(ptyfd, buf, cnt);
-	}   
+        cnt=cusgets(buf, sizeof(buf), NodeIo);
+        if (cnt < 0)
+          {
+            syslog(LOG_DEBUG,"I/O end: stdio channel, user");
+            break;
+          } else {
+          write(ptyfd, buf, cnt);
+        }
       }
-      
+
       if (FD_ISSET(ptyfd, &fds_read)) {
         alarm(SYSTEM_TIMEOUT);
-	cnt = read(ptyfd, buf, sizeof(buf));
-	if (cnt < 0) {
-	  syslog(LOG_DEBUG,"I/O end: stdio channel, application");
-	  break;
-	}
-	for(k = 0 ; k < cnt ; k++) {
-	  if (buf[k]=='\n' && (User.ul_type==AF_AX25 || User.ul_type==AF_FLEXNET || User.ul_type==AF_NETROM)) continue;
-	  axio_putc(buf[k], NodeIo);
-	}
-	in_queue+=cnt;
+        cnt = read(ptyfd, buf, sizeof(buf));
+        if (cnt < 0) {
+          syslog(LOG_DEBUG,"I/O end: stdio channel, application");
+          break;
+        }
+        for(k = 0 ; k < cnt ; k++) {
+          if (buf[k]=='\n' && (User.ul_type==AF_AX25 || User.ul_type==AF_FLEXNET || User.ul_type==AF_NETROM)) continue;
+          axio_putc(buf[k], NodeIo);
+        }
+        in_queue+=cnt;
       }
     }
 
@@ -310,16 +299,16 @@ int check_passwd(void)
   timet=time(NULL);
   srandom((int) timet);
   for(i=0;i<5;i++) pass[i]=(int) (level * (random()/(RAND_MAX+1.0)));
-	
+
   sprintf(buffer,"%10.10ld%s",timet,Password);
   axio_printf(NodeIo,"%s %d %d %d %d %d [%010.10ld]\n",
-	      PassPrompt,pass[0]+1,pass[1]+1,pass[2]+1,pass[3]+1,pass[4]+1,timet);
-	
+              PassPrompt,pass[0]+1,pass[1]+1,pass[2]+1,pass[3]+1,pass[4]+1,timet);
+
   sprintf(answer,"%c%c%c%c%c",Password[pass[0]],Password[pass[1]],Password[pass[2]],Password[pass[3]],Password[pass[4]]);
 
   axio_flush(NodeIo);
   axio_gets(buf, sizeof(buf), NodeIo);
-  
+
 
   if(strlen(buf)==32) i=strcmp(buf,tmp);
   else	i=strcmp(buf,answer);
@@ -333,7 +322,7 @@ int check_passwd(void)
   }
   axio_printf(NodeIo,"URONode Shell engaged - use EXTREME caution! \n\n");
   return 1;
-} 
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -351,31 +340,31 @@ int do_system(int argc, char **argv)
   if (pw==NULL) {
     if (User.ul_type == AF_NETROM) {
       axio_printf(NodeIo,"%s} ", NodeId);
-    } 
+    }
     node_msg("Permission denied\n");
     syslog(LOG_INFO, "system: %s attempted command %s", User.call, argv[0]);
     axio_puts("",NodeIo);
     return 1;
   }
-  if (strncmp(argv[0],"sysop",strlen(argv[0]))==0) 
+  if (strncmp(argv[0],"sysop",strlen(argv[0]))==0)
     {
       if (shell==1) {
-	User.state = STATE_EXTCMD;
-	User.dl_type = AF_UNSPEC;
-	strcpy(User.dl_name, "sysop");
-	strupr(User.dl_name);
-	update_user();
-	if (check_passwd()==0) return 0; 
-	login_open(pw, "/bin/bash");
-	axio_puts("",NodeIo);
-	return 0;
+        User.state = STATE_EXTCMD;
+        User.dl_type = AF_UNSPEC;
+        strcpy(User.dl_name, "sysop");
+        strupr(User.dl_name);
+        update_user();
+        if (check_passwd()==0) return 0;
+        login_open(pw, "/bin/bash");
+        axio_puts("",NodeIo);
+        return 0;
       } else {
-	if (User.ul_type == AF_NETROM) {
-	  axio_printf(NodeIo,"%s} ", NodeId);
-	}
-	node_msg("permission denied");
-	axio_puts("",NodeIo);
-	return 1;
+        if (User.ul_type == AF_NETROM) {
+          axio_printf(NodeIo,"%s} ", NodeId);
+        }
+        node_msg("permission denied");
+        axio_puts("",NodeIo);
+        return 1;
       };
     }
   if (User.ul_type == AF_NETROM) {
@@ -425,7 +414,7 @@ int examine_user(void)
   }
 
   if (strcmp(other_id, USER_NOBODY)==0) return 0;
-  
+
   cp=strtok(flags, " ,;-/\t\n\r");
   if (cp==NULL) return 0;
   do {
@@ -464,7 +453,7 @@ void lastlog(void)
   char usercall[10];
   char *cp;
   int escape;
-  strcpy(usercall, User.call);  
+  strcpy(usercall, User.call);
   cp=strchr(usercall, '-');
   if (cp) *cp='\0';
   strcpy(tty, "");
@@ -496,13 +485,13 @@ void lastlog(void)
       strcat(hostname, User.ul_name);
     }
     break;
-#endif    
+#endif
   case AF_INET:   strcpy(hostname, User.call);
-	strcat(hostname, " from ip ");
-	strcat(hostname, User.ul_name);
+        strcat(hostname, " from ip ");
+        strcat(hostname, User.ul_name);
     break;
   case AF_INET6:  strcpy(hostname6, User.ul_name);
-	strcat(hostname, User.call);
+        strcat(hostname, User.call);
         strcat(hostname, " on IPv6");
     break;
   case AF_UNSPEC: strcpy(hostname, User.call);
@@ -512,18 +501,18 @@ void lastlog(void)
     break;
   }
 
-  if ((last = open(DATA_NODE_LAST_FILE, O_RDWR, 0)) >= 0) { 
+  if ((last = open(DATA_NODE_LAST_FILE, O_RDWR, 0)) >= 0) {
     lseek(last, (off_t)UserId * sizeof(ll), L_SET);
     while (read(last, (char *)&ll, sizeof(ll)) == sizeof(ll) && ll.ll_time != 0) {
       if (strcmp(ll.ll_user,usercall)==0) {
-	escape = (check_perms(PERM_NOESC, 0L) == 0) ? -1 : EscChar;
+        escape = (check_perms(PERM_NOESC, 0L) == 0) ? -1 : EscChar;
 #ifdef HAVEMOTD
 	/*
 	  if (User.ul_type != AF_NETROM) {
 	  axio_printf(NodeIo," Escape is: %s%c\n", escape < 32 ? "CTRL-" : "", escape < 32 ? (escape + 'A' - 1) : escape);
 	  axio_printf(NodeIo,"Last login: %.*s ",24-5,(char *)ctime(&ll.ll_time));
 	  if (*ll.ll_host != '\0') axio_printf(NodeIo,"\n      From: %.*s\n",(int)sizeof(ll.ll_host), ll.ll_host);
-	  else                     axio_printf(NodeIo," on %.*s\n",(int)sizeof(ll.ll_line), ll.ll_line); 
+	  else                     axio_printf(NodeIo," on %.*s\n",(int)sizeof(ll.ll_line), ll.ll_line);
 	  }
 	*/
 #endif
@@ -532,9 +521,9 @@ void lastlog(void)
         break;
       } else UserId++;
     }
-    lseek(last, (off_t)UserId * sizeof(ll), L_SET); 
+    lseek(last, (off_t)UserId * sizeof(ll), L_SET);
   }
-  memset((char *)&ll, 0, sizeof(ll)); 
+  memset((char *)&ll, 0, sizeof(ll));
   if ((hit==0) && (User.ul_type != AF_NETROM)) {
     axio_printf(NodeIo,"Welcome, new user! Please use the Info and ? commands.\n\n");
     count=0;
@@ -591,7 +580,7 @@ int do_last(int argc, char **argv)
       if (cp) *cp='\0';
       cp=call;
       if (User.ul_type == AF_NETROM) {
-	axio_printf(NodeIo,"%s} ", NodeId);
+        axio_printf(NodeIo,"%s} ", NodeId);
       }
       if (check_perms(PERM_ANSI, 0L) != -1) {
         axio_printf(NodeIo, "\e[01;37m");
@@ -602,17 +591,17 @@ int do_last(int argc, char **argv)
       }
     } else {
       if (User.ul_type == AF_NETROM) {
-	axio_printf(NodeIo,"%s} ", NodeId);
+        axio_printf(NodeIo,"%s} ", NodeId);
       }
       axio_printf(NodeIo,"Usage: Who <callsign or *>\n");
       if (User.ul_type == AF_NETROM) {
-      	node_msg("");
+        node_msg("");
       }
       close(last);
       return -1;
     }
   }
-  
+
   lseek(last, (off_t)Entries * sizeof(ll), L_SET);
   /*  while (Entries < 20 && (read(last, (char *)&ll, sizeof(ll)) == sizeof(ll) && ll.ll_time != 0)) {  */
   while (read(last, (char *)&ll, sizeof(ll)) == sizeof(ll) && ll.ll_time !=0) {
@@ -621,7 +610,7 @@ int do_last(int argc, char **argv)
       axio_printf(NodeIo,"User       Last Online          Count  From\n");
       axio_printf(NodeIo,"------     -------------------- -----  -----------------------------");
     }
-    axio_printf(NodeIo,"\n%-10s ", ll.ll_user); 
+    axio_printf(NodeIo,"\n%-10s ", ll.ll_user);
     axio_printf(NodeIo,"%.*s  ",24-5,(char *)ctime(&ll.ll_time));
     axio_printf(NodeIo,"%-5d ",ll.ll_count);
     if (*ll.ll_host != '\0') axio_printf(NodeIo," %.*s",(int)sizeof(ll.ll_host), ll.ll_host);
@@ -629,7 +618,7 @@ int do_last(int argc, char **argv)
     Entries++;
   }
   lseek(last, (off_t)Entries * sizeof(ll), L_SET);
-  
+
   close(last);
   if (!cp && Entries==0) axio_printf(NodeIo,"No users in the lastlog database.");
   if (cp && Entries==0) axio_printf(NodeIo,"%s Never logged in.", call);

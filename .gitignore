@@ -1,6 +1,20 @@
+# qtcreator files
+uronode.cflags
+uronode.config
+uronode.creator
+uronode.cxxflags
+uronode.files
+uronode.includes
+# project files
+axdigi
+flexd
+nodeusers
+uronode
+calibrate
 Makefile
 Makefile.include
-calibrate
 config.h
 .depend
 make.debug
+*.o
+*.swp
