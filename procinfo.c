@@ -45,12 +45,12 @@ int equal_calls(char *call1, char* call2)
   cp1 = strchr(call1, '-');
   cp2 = strchr(call2, '-');
 
-  if (cp2 == NULL && cp1 != NULL) {
+  if (cp2 == NULL && cp1 != NULL && *(cp1 + 1) == '0') {
       safe_strncpy(tmp, call1, 9);
       tmp[cp1-call1] = 0;
       return !strcasecmp(tmp, call2);
     }
-  else if (cp1 == NULL && cp2 != NULL) {
+  else if (cp1 == NULL && cp2 != NULL && *(cp2 + 1) == '0') {
       safe_strncpy(tmp, call2, 9);
       tmp[cp2-call2] = 0;
       return !strcasecmp(call1, tmp);
@@ -222,7 +222,7 @@ struct ax_routes *read_ax_routes(void)
       safe_strncpy(new_el->dev, strtok(NULL, " \t\n\r"), 13);
       safe_strncpy(new_el->conn_type, strupr(strtok(NULL, " \t\n\r")), 1);
       safe_strncpy(new_el->description, strtok(NULL, "'\t\n\r"), 50);
-      if (new_el->description==NULL) strcpy(new_el->description," ");
+      /*if (new_el->description==NULL)*/ strcpy(new_el->description," ");
 
       switch(*new_el->conn_type) {
       case CONN_TYPE_DIRECT:
@@ -293,7 +293,8 @@ struct ax_routes *find_route(char *dest_call, struct ax_routes *list)
       p = &a;
       break;
     }
-    if (!strcasecmp(call, p->alias)) {
+    /*if (!strcasecmp(call, p->alias)) {*/
+    if (equal_calls(call, p->alias)) {
       a = *p;
       a.next = NULL;
       p = &a;
@@ -322,7 +323,8 @@ struct flex_dst *find_dest(char *dest_call, struct flex_dst *list)
 
   fdst=list?list:read_flex_dst();
   for (p=fdst;p!=NULL;p=p->next) {
-    if (!strcasecmp(call, p->dest_call) && (ssid>=p->ssida && ssid<=p->sside)) {
+    /*if (!strcasecmp(call, p->dest_call) && (ssid>=p->ssida && ssid<=p->sside)) {*/
+    if (equal_calls(call, p->dest_call) && (ssid>=p->ssida && ssid<=p->sside)) {
       f = *p;
       f.next = NULL;
       p = &f;
@@ -369,7 +371,8 @@ struct ax_routes *find_mheard(char *dest_call)
   if (cp==NULL) strcat(call,"-0");
 
   while (fread(&mh, sizeof(struct mheard_struct), 1, fp) == 1) {
-    if (strcasecmp(call, ax25_ntoa(&mh.from_call))==0) {
+    /*if (strcasecmp(call, ax25_ntoa(&mh.from_call))==0) {*/
+    if (equal_calls(call, ax25_ntoa(&mh.from_call))) {
       fclose(fp);
       safe_strncpy(a.dest_call, ax25_ntoa(&mh.from_call), 9);
       safe_strncpy(a.dev, mh.portname, 13);
