@@ -29,54 +29,54 @@ static void expand_string(char *dest, char *src, int argc, char **argv)
       skip = 1;
       def[0] = 0;
       if (*p1 == '{') {
-	p1++;
-	if ((cp = strchr(p1, '}')) != NULL) {
-	  skip = cp - p1 + 1;
-	  cp = p1;
-	  if (*++cp == ':') {
-	    cp++;
-	    n = min(skip - 3, 63);
-	    strncpy(def, cp, n);
-	    def[n] = 0;
-	  }
-	}
+        p1++;
+        if ((cp = strchr(p1, '}')) != NULL) {
+          skip = cp - p1 + 1;
+          cp = p1;
+          if (*++cp == ':') {
+            cp++;
+            n = min(skip - 3, 63);
+            strncpy(def, cp, n);
+            def[n] = 0;
+          }
+        }
       }
       switch (*p1) {
       case 'u':
       case 'U':
-	strcpy(tmpbuf, User.call);
-	if ((cp = strrchr(tmpbuf, '-'))) *cp = 0;
-	break;
+        strcpy(tmpbuf, User.call);
+        if ((cp = strrchr(tmpbuf, '-'))) *cp = 0;
+        break;
       case 's':
       case 'S':
-	strcpy(tmpbuf, User.call);
-	break;
+        strcpy(tmpbuf, User.call);
+        break;
       case 'p':
       case 'P':
-	strcpy(tmpbuf, User.ul_name);
-	if ((cp = strrchr(tmpbuf, '-'))) *cp = 0;
-	break;
+        strcpy(tmpbuf, User.ul_name);
+        if ((cp = strrchr(tmpbuf, '-'))) *cp = 0;
+        break;
       case 'r':
       case 'R':
-	strcpy(tmpbuf, User.ul_name);
-	break;
+        strcpy(tmpbuf, User.ul_name);
+        break;
       case 't':
       case 'T':
-	switch (User.ul_type) {
-	case AF_FLEXNET:
-	  strcpy(tmpbuf, "flexnet");
-	  break;
-	case AF_AX25:
-	  strcpy(tmpbuf, "ax25");
-	  break;
-	case AF_NETROM:
-	  strcpy(tmpbuf, "netrom");
-	  break;
-#ifdef HAVE_ROSE	  
+        switch (User.ul_type) {
+        case AF_FLEXNET:
+          strcpy(tmpbuf, "flexnet");
+          break;
+        case AF_AX25:
+          strcpy(tmpbuf, "ax25");
+          break;
+        case AF_NETROM:
+          strcpy(tmpbuf, "netrom");
+          break;
+#ifdef HAVE_ROSE
 	case AF_ROSE:
 	  strcpy(tmpbuf, "rose");
 	  break;
-#endif	  
+#endif
 	case AF_INET:
 	  strcpy(tmpbuf, "inet");
 	  break;
@@ -95,34 +95,34 @@ static void expand_string(char *dest, char *src, int argc, char **argv)
       case '7':
       case '8':
       case '9':
-	n = *p1 - '0';
-	if (n < argc) strcpy(tmpbuf, argv[n]);
-	else          strcpy(tmpbuf, def);
-	break;
+        n = *p1 - '0';
+        if (n < argc) strcpy(tmpbuf, argv[n]);
+        else          strcpy(tmpbuf, def);
+        break;
       case '*':
-	nocopy=0;
-	for(n=2;n<argc;n++) {
-	  if (argv[n]==NULL) break;
-	  strcpy(tmpbuf, argv[n]);
-	  if (isalpha(*p1)) {
-	    if (isupper(*p1)) strupr(tmpbuf);
-	    else              strlwr(tmpbuf);
-	  }
-	  strcpy(p2, tmpbuf);
-	  p2 += strlen(tmpbuf);
-	}
-	break;
+        nocopy=0;
+        for(n=2;n<argc;n++) {
+          if (argv[n]==NULL) break;
+          strcpy(tmpbuf, argv[n]);
+          if (isalpha(*p1)) {
+            if (isupper(*p1)) strupr(tmpbuf);
+            else              strlwr(tmpbuf);
+          }
+          strcpy(p2, tmpbuf);
+          p2 += strlen(tmpbuf);
+        }
+        break;
       default:
-	strcpy(tmpbuf, "%");
-	break;
+        strcpy(tmpbuf, "%");
+        break;
       }
       if (nocopy==1) {
-	if (isalpha(*p1)) {
-	  if (isupper(*p1)) strupr(tmpbuf);
-	  else              strlwr(tmpbuf);
-	}
-	strcpy(p2, tmpbuf);
-	p2 += strlen(tmpbuf);
+        if (isalpha(*p1)) {
+          if (isupper(*p1)) strupr(tmpbuf);
+          else              strlwr(tmpbuf);
+        }
+        strcpy(p2, tmpbuf);
+        p2 += strlen(tmpbuf);
       }
       p1 += skip;
     } else
@@ -153,9 +153,9 @@ static char *parse_string(char *str)
       case '\\': *cp++ = '\\';   break;
       case '\"': *cp++ = '\"';   break;
       case 'x':
-	num = strtoul(--str, &str, 16);
-	*cp++ = (char) num;
-	break;
+        num = strtoul(--str, &str, 16);
+        *cp++ = (char) num;
+        break;
       case '0':
       case '1':
       case '2':
@@ -164,14 +164,14 @@ static char *parse_string(char *str)
       case '5':
       case '6':
       case '7':
-	num = strtoul(--str, &str, 8);
-	*cp++ = (char) num;
-	break;
+        num = strtoul(--str, &str, 8);
+        *cp++ = (char) num;
+        break;
       case '\0':
-	return NULL;
+        return NULL;
       default:
-	*cp++ = *(str - 1);
-	break;
+        *cp++ = *(str - 1);
+        break;
       };
     } else {
       *cp++ = *str++;
@@ -198,7 +198,7 @@ int parse_args(char **argv, char *cmd)
     argv[ct++] = cmd;
     if (quoted) {
       if ((cmd = parse_string(cmd)) == NULL)
-	return 0;
+        return 0;
     } else {
       while (*cmd && !isspace(*cmd)) cmd++;
     }

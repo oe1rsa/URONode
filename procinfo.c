@@ -222,7 +222,7 @@ struct ax_routes *read_ax_routes(void)
       safe_strncpy(new_el->dev, strtok(NULL, " \t\n\r"), 13);
       safe_strncpy(new_el->conn_type, strupr(strtok(NULL, " \t\n\r")), 1);
       safe_strncpy(new_el->description, strtok(NULL, "'\t\n\r"), 50);
-      /*if (new_el->description==NULL)*/ strcpy(new_el->description," ");
+      if (new_el->description==NULL) strcpy(new_el->description," ");
 
       switch(*new_el->conn_type) {
       case CONN_TYPE_DIRECT:
